@@ -1,0 +1,427 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #172033;
+  background: #f4f7fb;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  cursor: pointer;
+  background: #172033;
+  color: white;
+  font-weight: 700;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.header {
+  height: 72px;
+  padding: 0 6vw;
+  background: white;
+  border-bottom: 1px solid #e4e9f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.subtitle {
+  color: #718096;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.model {
+  border: 1px solid #dce2ea;
+  border-radius: 10px;
+  padding: 9px 14px;
+  background: white;
+}
+
+.main {
+  width: min(980px, 92vw);
+  margin: 0 auto;
+  padding: 52px 0 80px;
+}
+
+.hero {
+  margin-bottom: 28px;
+}
+
+.hero h1 {
+  max-width: 760px;
+  font-size: clamp(30px, 5vw, 52px);
+  line-height: 1.05;
+  margin: 0 0 16px;
+}
+
+.hero p {
+  max-width: 720px;
+  color: #667085;
+  line-height: 1.7;
+  font-size: 16px;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e4e9f0;
+  border-radius: 18px;
+  padding: 22px;
+  margin-top: 18px;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04);
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.composerFooter,
+.sectionTitle,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hint,
+.sectionTitle p,
+.status,
+.meta,
+.reason {
+  color: #667085;
+  font-size: 13px;
+}
+
+.status {
+  margin: 16px 2px;
+}
+
+.sectionTitle h2 {
+  margin: 0 0 4px;
+}
+
+.detections {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.detection {
+  display: flex;
+  gap: 14px;
+  padding: 15px;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+}
+
+.detection input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+}
+
+.detectionBody {
+  flex: 1;
+}
+
+.detectionTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.risk {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2f7;
+}
+
+.risk.critical {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.risk.high {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.risk.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.risk.low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.reason {
+  margin-top: 7px;
+  line-height: 1.5;
+}
+
+.count {
+  font-size: 12px;
+  font-weight: 800;
+  background: #eef2ff;
+  padding: 7px 10px;
+  border-radius: 999px;
+}
+
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.compare > div {
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #667085;
+  margin-bottom: 8px;
+}
+
+pre {
+  margin: 0;
+  padding: 16px;
+  min-height: 130px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f8fafc;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+.aliasList {
+  display: grid;
+  gap: 7px;
+  margin: 16px 0;
+}
+
+.alias {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.alias strong {
+  color: #3155d9;
+}
+
+.secondary {
+  background: #edf1f6;
+  color: #172033;
+}
+
+.responseText {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+@media (max-width: 720px) {
+  .compare {
+    grid-template-columns: 1fr;
+  }
+
+  .composerFooter,
+  .sectionTitle,
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  button {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   PRIVACY ACTIONS
+   ============================================================ */
+
+.privacyActions {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+
+
+/* ============================================================
+   DETECTION RISK BORDERS
+   ============================================================ */
+
+.detection.critical {
+  border-left: 4px solid #dc2626;
+}
+
+.detection.high {
+  border-left: 4px solid #ea580c;
+}
+
+.detection.medium {
+  border-left: 4px solid #d97706;
+}
+
+.detection.low {
+  border-left: 4px solid #16a34a;
+}
+
+
+/* ============================================================
+   BLOCKED DETECTION
+   ============================================================ */
+
+.blockedDetection {
+  background: #fff7f7;
+  cursor: not-allowed;
+}
+
+.blockedDetection input {
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
+   ACTION
+   ============================================================ */
+
+.action {
+  margin-top: 9px;
+  font-size: 12px;
+  color: #667085;
+}
+
+.action strong {
+  color: #172033;
+}
+
+
+/* ============================================================
+   BLOCK MESSAGE
+   ============================================================ */
+
+.blockedMessage {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+/* ============================================================
+   ALIAS SECTION
+   ============================================================ */
+
+.aliasSection {
+  margin-top: 18px;
+}
+
+
+/* ============================================================
+   PREVIEW NOTICE
+   ============================================================ */
+
+.previewNotice {
+  margin-top: 18px;
+  padding: 13px 15px;
+  border: 1px solid #dbe4ff;
+  border-radius: 10px;
+  background: #f5f7ff;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+
+/* ============================================================
+   RESPONSE NOTICE
+   ============================================================ */
+
+.responseNotice {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* ============================================================
+   DISABLED BUTTON
+   ============================================================ */
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 720px) {
+
+  .privacyActions {
+    flex-direction: column;
+  }
+
+  .privacyActions button {
+    width: 100%;
+  }
+
+}
