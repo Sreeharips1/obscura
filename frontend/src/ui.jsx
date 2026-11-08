@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-export const API = "http://localhost:8000/api";
+export const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
 
 // Only Gemini is wired up in the backend today.
 export const PROVIDERS = [

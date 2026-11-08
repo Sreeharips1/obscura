@@ -1,0 +1,9 @@
+# Automatic HTTPS for {$DOMAIN}. The login keeps strangers from using
+# your Gemini quota and uploading files to your server.
+{$DOMAIN} {
+	basicauth {
+		{$APP_USER} {$APP_PASSWORD_HASH}
+	}
+
+	reverse_proxy frontend:80
+}

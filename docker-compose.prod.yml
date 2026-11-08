@@ -1,0 +1,36 @@
+# Used on the server. Images come from the GitLab registry.
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      APP_USER: ${APP_USER}
+      APP_PASSWORD_HASH: ${APP_PASSWORD_HASH}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
+  frontend:
+    image: ${IMAGE_PREFIX}/frontend:latest
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    image: ${IMAGE_PREFIX}/backend:latest
+    restart: unless-stopped
+    env_file: ./backend.env
+    environment:
+      OBSCURA_CORS_ORIGINS: https://${DOMAIN}
+
+volumes:
+  caddy_data:
+  caddy_config:

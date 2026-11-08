@@ -14,3 +14,10 @@ dist/
 
 # OS
 .DS_Store
+
+# Added by apply_deploy.py
+yolov8n.pt
+.pytest_cache/
+frontend/dist/
+.cache/
+backend.env

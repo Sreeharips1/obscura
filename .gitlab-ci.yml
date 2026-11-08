@@ -1,0 +1,73 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  npm_config_cache: "$CI_PROJECT_DIR/.cache/npm"
+
+test:backend:
+  stage: test
+  image: python:3.12-slim
+  cache:
+    key: pip-backend
+    paths:
+      - .cache/pip
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+    - cd backend
+    - pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+    - pip install -r requirements.txt
+    - pip uninstall -y opencv-python opencv-python-headless opencv-contrib-python opencv-contrib-python-headless
+    - pip install "opencv-contrib-python-headless>=4.10,<5"
+    - python -m spacy download en_core_web_sm
+  script:
+    - pytest -q
+
+test:frontend:
+  stage: test
+  image: node:22-alpine
+  cache:
+    key: npm-frontend
+    paths:
+      - .cache/npm
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+
+build:images:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA" -t "$CI_REGISTRY_IMAGE/backend:latest" backend
+    - docker build --build-arg VITE_API_URL=/api -t "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA" -t "$CI_REGISTRY_IMAGE/frontend:latest" frontend
+    - docker push --all-tags "$CI_REGISTRY_IMAGE/backend"
+    - docker push --all-tags "$CI_REGISTRY_IMAGE/frontend"
+
+deploy:production:
+  stage: deploy
+  image: alpine:3.20
+  needs:
+    - build:images
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+  script:
+    - scp docker-compose.prod.yml Caddyfile "$SSH_USER@$SSH_HOST:/opt/obscura/"
+    - ssh "$SSH_USER@$SSH_HOST" "cd /opt/obscura && docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d && docker image prune -f"
