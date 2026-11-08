@@ -41,47 +41,56 @@ TOKEN_PREFIXES = {
 }
 
 
-# ============================================================
-# TOKEN GENERATOR
-# ============================================================
+def generate_token(detection_type: str, number: int) -> str:
 
-def generate_token(
-    detection_type: str,
-    number: int,
-) -> str:
-
-    prefix = TOKEN_PREFIXES.get(
-        detection_type,
-        "OBSCURA_PRIVATE",
-    )
+    prefix = TOKEN_PREFIXES.get(detection_type, "OBSCURA_PRIVATE")
 
     return f"<{prefix}_{number:03d}>"
 
 
+def normalize_entity_value(value: str) -> str:
+
+    return " ".join(value.strip().lower().split())
+
+
+def _entity_key(detection: Detection) -> tuple[str, str]:
+
+    return (detection.type, normalize_entity_value(detection.value))
+
+
 # ============================================================
-# NORMALIZE ENTITY
+# EXPAND SELECTION
 # ============================================================
 #
-# Used ONLY for deciding whether two detections represent
-# the same underlying value.
-#
-# Example:
-#
-# Sreehari
-# sreehari
-#
-# become the same canonical identity.
-#
-# We do NOT modify the original value stored in AliasItem.
+# If the user protects ONE occurrence of a value (e.g. "Sreehari"),
+# every other occurrence of the same type + value is protected too.
+# Otherwise the name would still leak from the other occurrences.
+# BLOCK items are never included here.
 # ============================================================
 
-def normalize_entity_value(
-    value: str,
-) -> str:
+def expand_selection(
+    detections: list[Detection],
+    selected_ids: list[str],
+) -> list[str]:
 
-    return " ".join(
-        value.strip().lower().split()
-    )
+    selected = set(selected_ids)
+
+    chosen_entities = {
+        _entity_key(detection)
+        for detection in detections
+        if detection.id in selected
+        and detection.recommended_action != "BLOCK"
+    }
+
+    return [
+        detection.id
+        for detection in detections
+        if detection.recommended_action != "BLOCK"
+        and (
+            detection.id in selected
+            or _entity_key(detection) in chosen_entities
+        )
+    ]
 
 
 # ============================================================
@@ -94,138 +103,39 @@ def build_aliases(
 ) -> list[AliasItem]:
 
     aliases = []
-
     counters = defaultdict(int)
-
-    # --------------------------------------------------------
-    # Maps:
-    #
-    # (TYPE, NORMALIZED_VALUE)
-    #
-    # to:
-    #
-    # AliasItem
-    #
-    # This is the key part that allows repeated occurrences
-    # to share the same alias.
-    # --------------------------------------------------------
-
     entity_aliases = {}
 
+    selected = set(selected_ids)
 
-    # --------------------------------------------------------
-    # Process in original text order.
-    # --------------------------------------------------------
-
-    selected_detections = [
-        detection
-        for detection in detections
-        if detection.id in selected_ids
-    ]
-
-    selected_detections.sort(
-        key=lambda detection: (
-            detection.start,
-            detection.end,
-        )
+    selected_detections = sorted(
+        (
+            detection
+            for detection in detections
+            if detection.id in selected
+            and detection.recommended_action != "BLOCK"
+        ),
+        key=lambda detection: (detection.start, detection.end),
     )
-
 
     for detection in selected_detections:
 
-        # ----------------------------------------------------
-        # BLOCK items must never be sent externally.
-        # ----------------------------------------------------
+        key = _entity_key(detection)
 
-        if (
-            detection.recommended_action
-            == "BLOCK"
-        ):
+        if key in entity_aliases:
             continue
 
-
-        # ----------------------------------------------------
-        # Canonical identity.
-        #
-        # Type is included deliberately.
-        #
-        # Example:
-        #
-        # "123456"
-        # PHONE
-        #
-        # and
-        #
-        # "123456"
-        # ACCOUNT_NUMBER
-        #
-        # must NOT automatically become the same entity.
-        # ----------------------------------------------------
-
-        key = (
-            detection.type,
-            normalize_entity_value(
-                detection.value
-            ),
-        )
-
-
-        # ----------------------------------------------------
-        # Existing entity?
-        # ----------------------------------------------------
-
-        existing_alias = entity_aliases.get(
-            key
-        )
-
-
-        if existing_alias is not None:
-
-            # ------------------------------------------------
-            # Same underlying entity.
-            #
-            # No new alias is created.
-            #
-            # The caller can still use the existing alias
-            # because the detection ID is mapped separately
-            # during sanitization.
-            # ------------------------------------------------
-
-            continue
-
-
-        # ----------------------------------------------------
-        # New entity.
-        # ----------------------------------------------------
-
-        counters[
-            detection.type
-        ] += 1
-
-
-        token = generate_token(
-            detection.type,
-            counters[detection.type],
-        )
-
+        counters[detection.type] += 1
 
         alias = AliasItem(
             detection_id=detection.id,
             original=detection.value,
-            alias=token,
+            alias=generate_token(detection.type, counters[detection.type]),
             type=detection.type,
         )
 
-
-        aliases.append(
-            alias
-        )
-
-
-        entity_aliases[
-            key
-        ] = alias
-
+        aliases.append(alias)
+        entity_aliases[key] = alias
 
     return aliases
 
@@ -240,131 +150,38 @@ def sanitize_text(
     selected_ids: list[str],
 ):
 
-    aliases = build_aliases(
-        detections,
-        selected_ids,
-    )
+    selected_ids = expand_selection(detections, selected_ids)
 
-
-    # --------------------------------------------------------
-    # Build alias lookup by detection ID.
-    #
-    # The first occurrence owns the AliasItem.
-    # Repeated occurrences need to find that same alias.
-    # --------------------------------------------------------
-
-    alias_by_detection = {}
-
-
-    # Canonical entity lookup.
+    aliases = build_aliases(detections, selected_ids)
 
     alias_by_entity = {
-        (
-            alias.type,
-            normalize_entity_value(
-                alias.original
-            ),
-        ): alias
+        (alias.type, normalize_entity_value(alias.original)): alias
         for alias in aliases
     }
 
-
-    # --------------------------------------------------------
-    # Associate EVERY selected detection with its canonical
-    # alias.
-    # --------------------------------------------------------
-
-    for detection in detections:
-
-        if detection.id not in selected_ids:
-            continue
-
-
-        if (
-            detection.recommended_action
-            == "BLOCK"
-        ):
-            continue
-
-
-        key = (
-            detection.type,
-            normalize_entity_value(
-                detection.value
-            ),
-        )
-
-
-        alias = alias_by_entity.get(
-            key
-        )
-
-
-        if alias is not None:
-
-            alias_by_detection[
-                detection.id
-            ] = alias
-
-
-    # --------------------------------------------------------
-    # Build character-position replacements.
-    # --------------------------------------------------------
+    selected = set(selected_ids)
 
     replacements = []
 
-
     for detection in detections:
 
-        if detection.id not in selected_ids:
+        if detection.id not in selected:
             continue
 
-
-        alias = alias_by_detection.get(
-            detection.id
-        )
-
+        alias = alias_by_entity.get(_entity_key(detection))
 
         if alias is None:
             continue
 
+        replacements.append((detection.start, detection.end, alias.alias))
 
-        replacements.append(
-            (
-                detection.start,
-                detection.end,
-                alias.alias,
-            )
-        )
-
-
-    # --------------------------------------------------------
-    # RIGHT → LEFT
-    #
-    # This preserves original character positions.
-    # --------------------------------------------------------
-
-    replacements.sort(
-        key=lambda item: item[0],
-        reverse=True,
-    )
-
+    # Right -> left keeps earlier character positions valid.
+    replacements.sort(key=lambda item: item[0], reverse=True)
 
     sanitized = text
 
-
-    for (
-        start,
-        end,
-        replacement,
-    ) in replacements:
-
-        sanitized = (
-            sanitized[:start]
-            + replacement
-            + sanitized[end:]
-        )
-
+    for start, end, replacement in replacements:
+        sanitized = sanitized[:start] + replacement + sanitized[end:]
 
     return sanitized, aliases
 
@@ -373,33 +190,11 @@ def sanitize_text(
 # RESTORE AI RESPONSE
 # ============================================================
 
-def restore_text(
-    text: str,
-    aliases: list[AliasItem],
-) -> str:
+def restore_text(text: str, aliases: list[AliasItem]) -> str:
 
     restored = text
 
-
-    # --------------------------------------------------------
-    # Longest aliases first.
-    # --------------------------------------------------------
-
-    ordered_aliases = sorted(
-        aliases,
-        key=lambda alias: len(
-            alias.alias
-        ),
-        reverse=True,
-    )
-
-
-    for alias in ordered_aliases:
-
-        restored = restored.replace(
-            alias.alias,
-            alias.original,
-        )
-
+    for alias in sorted(aliases, key=lambda a: len(a.alias), reverse=True):
+        restored = restored.replace(alias.alias, alias.original)
 
     return restored

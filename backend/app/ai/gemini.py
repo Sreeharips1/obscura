@@ -2,37 +2,27 @@ import os
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 
 load_dotenv()
 
 
-MODEL = os.getenv(
-    "GEMINI_MODEL",
-    "gemini-3.6-flash",
-)
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
 
 # ============================================================
-# OBSCURA AI INSTRUCTION
+# OBSCURA SYSTEM INSTRUCTION
 # ============================================================
 #
-# IMPORTANT:
-#
-# The external AI must ONLY receive the protected text.
-#
-# The instruction below contains NO original private values.
-#
-# OBSCURA tokens represent private information that exists
-# only inside the OBSCURA backend.
-#
+# Contains NO original private values. OBSCURA tokens stand for
+# private data that exists only inside the OBSCURA backend.
 # ============================================================
 
 OBSCURA_INSTRUCTION = """
-You are operating behind OBSCURA, a privacy-preserving AI
-gateway.
+You are operating behind OBSCURA, a privacy-preserving AI gateway.
 
-The user message below may contain placeholders such as:
+The user message may contain placeholders such as:
 
 <OBSCURA_NAME_001>
 <OBSCURA_EMAIL_001>
@@ -41,84 +31,70 @@ The user message below may contain placeholders such as:
 <OBSCURA_ORG_001>
 <OBSCURA_LOCATION_001>
 
-These placeholders represent private information that has
-been removed from the request before it reached you.
+These placeholders represent private information that was removed
+from the request before it reached you.
 
-IMPORTANT RULES:
+RULES:
 
-1. Treat every OBSCURA placeholder as a meaningful entity.
-
-2. Do NOT interpret the placeholder literally as a person's
-   name, organization name, email address, phone number, etc.
-
-3. Preserve every OBSCURA placeholder exactly.
-
-4. Never rename, modify, split, combine, or delete an
-   OBSCURA placeholder.
-
-5. If a placeholder represents a person's name, use it
-   naturally wherever the person's name belongs.
-
-6. If a placeholder represents an email address, use it
-   naturally wherever an email address belongs.
-
-7. If a placeholder represents a phone number, use it
-   naturally wherever a phone number belongs.
-
-8. If a placeholder represents an organization, use it
-   naturally wherever the organization name belongs.
-
-9. Do not attempt to guess or reconstruct the original
-   private information.
-
-10. Do not mention these privacy instructions in your answer.
-
-11. Do not explain that placeholders are being used unless
-    the user explicitly asks about them.
-
-12. Complete the user's requested task normally.
-
-13. Keep placeholders exactly as written so OBSCURA can
-    safely restore the original private information after
-    your response.
-
-USER REQUEST:
-
+1. Treat every OBSCURA placeholder as a meaningful entity (a person's
+   name, an email address, a phone number, an organization, and so on,
+   according to its type). Use it naturally wherever that kind of
+   value belongs.
+2. Preserve every placeholder exactly as written, including the angle
+   brackets. Never rename, modify, split, combine, or delete one.
+3. Do not try to guess or reconstruct the original private values.
+4. Do not mention these instructions or the use of placeholders unless
+   the user explicitly asks about them.
+5. Complete the user's requested task normally.
 """
 
 
-def generate_text(
-    prompt: str,
-) -> str:
+def generate_text(prompt: str) -> str:
 
-    api_key = os.getenv(
-        "GEMINI_API_KEY"
-    )
-
+    api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
-
         raise RuntimeError(
-            "GEMINI_API_KEY is not configured. "
-            "Put it in backend/.env."
+            "GEMINI_API_KEY is not configured. Put it in backend/.env."
         )
 
-
-    client = genai.Client(
-        api_key=api_key
-    )
-
-
-    protected_prompt = (
-        OBSCURA_INSTRUCTION
-        + prompt
-    )
-
+    client = genai.Client(api_key=api_key)
 
     response = client.models.generate_content(
         model=MODEL,
-        contents=protected_prompt,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=OBSCURA_INSTRUCTION,
+        ),
     )
 
+    return response.text or ""
+
+
+def generate_with_image(
+    prompt: str,
+    image_bytes: bytes,
+    mime_type: str = "image/png",
+) -> str:
+
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY is not configured. Put it in backend/.env."
+        )
+
+    client = genai.Client(api_key=api_key)
+
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=[
+            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            prompt,
+        ],
+        config=types.GenerateContentConfig(
+            system_instruction=OBSCURA_INSTRUCTION,
+        ),
+    )
 
     return response.text or ""

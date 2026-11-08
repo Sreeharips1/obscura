@@ -1,288 +1,270 @@
-import cv2
 import hashlib
+import re
 
-from app.privacy.image.models import (
-    ImageRegion,
-    ImageDetectionResult,
+import cv2
+
+from app.privacy.image.mapping import build_text, span_boxes
+from app.privacy.image.models import ImageRegion, ImageDetectionResult
+from app.privacy.image.ocr import run_ocr
+
+
+# Indian-style plate, e.g. KL 07 AB 1234 / MH12DE1433
+PLATE_RE = re.compile(
+    r"\b[A-Z]{2}[\s-]?\d{1,2}[\s-]?[A-Z]{1,3}[\s-]?\d{4}\b"
 )
 
 
-# ============================================================
-# DETECTION ID
-# ============================================================
+def generate_region_id(region_type, x, y, width, height) -> str:
 
-def generate_region_id(
-    region_type: str,
-    x: int,
-    y: int,
-    width: int,
-    height: int,
-) -> str:
+    raw = f"{region_type}:{x}:{y}:{width}:{height}"
 
-    raw = (
-        f"{region_type}:"
-        f"{x}:{y}:{width}:{height}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:20]
+
+
+def make_region(region_type, label, confidence, x, y, width, height,
+                source, action="REDACT", text=None) -> ImageRegion:
+
+    return ImageRegion(
+        id=generate_region_id(region_type, x, y, width, height),
+        type=region_type,
+        label=label,
+        confidence=round(float(confidence), 2),
+        x=int(x),
+        y=int(y),
+        width=int(width),
+        height=int(height),
+        source=source,
+        text=text,
+        recommended_action=action,
     )
 
-    return hashlib.sha256(
-        raw.encode()
-    ).hexdigest()[:20]
 
-
-# ============================================================
-# QR CODE DETECTION
-# ============================================================
-
-def detect_qr_codes(
-    image,
-) -> list[ImageRegion]:
+def _polygons_to_regions(points, region_type, label, confidence):
 
     regions = []
 
-    detector = cv2.QRCodeDetector()
+    if points is None or len(points) == 0:
+        return regions
 
-    try:
+    for polygon in points:
 
-        result = detector.detectAndDecodeMulti(
-            image
+        if polygon is None:
+            continue
+
+        polygon = polygon.astype(int).reshape(-1, 2)
+
+        x = int(polygon[:, 0].min())
+        y = int(polygon[:, 1].min())
+        width = int(polygon[:, 0].max()) - x
+        height = int(polygon[:, 1].max()) - y
+
+        if width <= 0 or height <= 0:
+            continue
+
+        regions.append(
+            make_region(region_type, label, confidence,
+                        x, y, width, height, "OPENCV")
         )
-
-        # OpenCV versions return slightly different
-        # structures, therefore we handle both cases.
-
-        if len(result) == 4:
-
-            success, decoded_info, points, _ = result
-
-        else:
-
-            success = False
-            decoded_info = []
-            points = None
-
-
-        if not success or points is None:
-
-            return regions
-
-
-        for index, polygon in enumerate(points):
-
-            if polygon is None:
-                continue
-
-            polygon = polygon.astype(int)
-
-            x_values = polygon[:, 0]
-            y_values = polygon[:, 1]
-
-            x = int(x_values.min())
-            y = int(y_values.min())
-
-            right = int(x_values.max())
-            bottom = int(y_values.max())
-
-            width = right - x
-            height = bottom - y
-
-            if width <= 0 or height <= 0:
-                continue
-
-
-            regions.append(
-                ImageRegion(
-                    id=generate_region_id(
-                        "QR_CODE",
-                        x,
-                        y,
-                        width,
-                        height,
-                    ),
-
-                    type="QR_CODE",
-
-                    label="QR code",
-
-                    confidence=0.98,
-
-                    x=x,
-                    y=y,
-                    width=width,
-                    height=height,
-
-                    source="OPENCV",
-
-                    recommended_action="BLUR",
-                )
-            )
-
-    except Exception as error:
-
-        print(
-            "[OBSCURA IMAGE] "
-            f"QR detection error: {error}"
-        )
-
 
     return regions
 
 
 # ============================================================
-# BARCODE DETECTION
+# QR / BARCODE
 # ============================================================
 
-def detect_barcodes(
-    image,
-) -> list[ImageRegion]:
-
-    regions = []
-
-    detector = cv2.barcode_BarcodeDetector()
+def detect_qr_codes(image):
 
     try:
+        ok, points = cv2.QRCodeDetector().detectMulti(image)
 
-        result = detector.detectAndDecode(
-            image
+        if not ok:
+            return []
+
+        return _polygons_to_regions(points, "QR_CODE", "QR code", 0.98)
+
+    except Exception as error:
+        print(f"[OBSCURA IMAGE] QR detection error: {error}")
+        return []
+
+
+def _make_barcode_detector():
+
+    module = getattr(cv2, "barcode", None)
+
+    if module is not None and hasattr(module, "BarcodeDetector"):
+        return module.BarcodeDetector()
+
+    if hasattr(cv2, "barcode_BarcodeDetector"):
+        return cv2.barcode_BarcodeDetector()
+
+    return None
+
+
+def detect_barcodes(image):
+
+    try:
+        detector = _make_barcode_detector()
+
+        if detector is None:
+            return []
+
+        result = detector.detect(image)
+
+        if not (isinstance(result, tuple) and len(result) == 2):
+            return []
+
+        ok, points = result
+
+        if not ok:
+            return []
+
+        return _polygons_to_regions(points, "BARCODE", "Barcode", 0.96)
+
+    except Exception as error:
+        print(f"[OBSCURA IMAGE] Barcode detection error: {error}")
+        return []
+
+
+# ============================================================
+# FACES (OpenCV Haar cascade: bundled, no download needed)
+# ============================================================
+
+def detect_faces(image):
+
+    try:
+        path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        cascade = cv2.CascadeClassifier(path)
+
+        if cascade.empty():
+            return []
+
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.equalizeHist(gray)
+
+        faces = cascade.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40)
         )
 
-        # OpenCV's exact return structure can vary
-        # between versions.
+        regions = []
 
-        if len(result) == 3:
+        for (x, y, w, h) in faces:
 
-            ok, decoded_info, points = result
-
-        else:
-
-            return regions
-
-
-        if points is None:
-
-            return regions
-
-
-        if len(points) == 0:
-
-            return regions
-
-
-        for polygon in points:
-
-            if polygon is None:
-                continue
-
-
-            polygon = polygon.astype(int)
-
-            x_values = polygon[:, 0]
-            y_values = polygon[:, 1]
-
-            x = int(x_values.min())
-            y = int(y_values.min())
-
-            right = int(x_values.max())
-            bottom = int(y_values.max())
-
-            width = right - x
-            height = bottom - y
-
-
-            if width <= 0 or height <= 0:
-                continue
-
+            pad_x = int(w * 0.15)
+            pad_y = int(h * 0.20)
 
             regions.append(
-                ImageRegion(
-                    id=generate_region_id(
-                        "BARCODE",
-                        x,
-                        y,
-                        width,
-                        height,
-                    ),
-
-                    type="BARCODE",
-
-                    label="Barcode",
-
-                    confidence=0.96,
-
-                    x=x,
-                    y=y,
-                    width=width,
-                    height=height,
-
-                    source="OPENCV",
-
-                    recommended_action="BLUR",
+                make_region(
+                    "FACE", "Face", 0.80,
+                    max(0, x - pad_x), max(0, y - pad_y),
+                    w + 2 * pad_x, h + 2 * pad_y,
+                    "OPENCV",
                 )
             )
 
+        return regions
+
     except Exception as error:
+        print(f"[OBSCURA IMAGE] Face detection error: {error}")
+        return []
 
+
+# ============================================================
+# TEXT IN IMAGE (OCR -> text detectors -> boxes)
+# ============================================================
+
+def detect_text_regions(image):
+
+    try:
+        lines = run_ocr(image)
+
+        if not lines:
+            return []
+
+        # Imported here so the heavy models only load when needed.
+        from app.privacy.detector import detect_text
+
+        full_text, spans = build_text(lines)
+
+        regions = []
+
+        for detection in detect_text(full_text):
+
+            action = (
+                "BLOCK"
+                if detection.recommended_action == "BLOCK"
+                else "REDACT"
+            )
+
+            label = detection.type.replace("_", " ").title()
+
+            for x, y, w, h in span_boxes(spans, detection.start, detection.end):
+                regions.append(
+                    make_region(
+                        detection.type, label, detection.confidence,
+                        x, y, w, h,
+                        "OCR+" + detection.source,
+                        action, detection.value,
+                    )
+                )
+
+        for line_start, _line_end, line in spans:
+
+            for match in PLATE_RE.finditer(line.text.upper()):
+
+                for x, y, w, h in span_boxes(
+                    spans,
+                    line_start + match.start(),
+                    line_start + match.end(),
+                ):
+                    regions.append(
+                        make_region(
+                            "LICENSE_PLATE", "License plate", 0.85,
+                            x, y, w, h, "OCR", "REDACT", match.group(),
+                        )
+                    )
+
+        return regions
+
+    except Exception as error:
         print(
-            "[OBSCURA IMAGE] "
-            f"Barcode detection error: {error}"
+            f"[OBSCURA IMAGE] OCR detection error "
+            f"({type(error).__name__}): {error}"
         )
-
-
-    return regions
+        return []
 
 
 # ============================================================
-# MAIN IMAGE DETECTOR
+# MAIN
 # ============================================================
 
-def detect_image(
-    image,
-) -> ImageDetectionResult:
+def detect_image(image) -> ImageDetectionResult:
 
     height, width = image.shape[:2]
 
     regions = []
 
+    regions.extend(detect_qr_codes(image))
+    regions.extend(detect_barcodes(image))
+    faces = detect_faces(image)
+    regions.extend(faces)
 
-    # --------------------------------------------------------
-    # QR
-    # --------------------------------------------------------
+    # Imported here to avoid a circular import.
+    from app.privacy.image.devices import detect_devices, detect_extra_faces
 
-    regions.extend(
-        detect_qr_codes(
-            image
-        )
-    )
-
-
-    # --------------------------------------------------------
-    # Barcode
-    # --------------------------------------------------------
-
-    regions.extend(
-        detect_barcodes(
-            image
-        )
-    )
-
-
-    # --------------------------------------------------------
-    # Remove duplicate regions
-    # --------------------------------------------------------
+    regions.extend(detect_extra_faces(image, faces))
+    regions.extend(detect_devices(image))
+    regions.extend(detect_text_regions(image))
 
     unique = {}
 
     for region in regions:
+        existing = unique.get(region.id)
 
-        unique[region.id] = region
+        # If a BLOCK and a REDACT region collide, BLOCK wins.
+        if existing is None or region.recommended_action == "BLOCK":
+            unique[region.id] = region
 
+    ordered = sorted(unique.values(), key=lambda r: (r.y, r.x))
 
-    regions = list(
-        unique.values()
-    )
-
-
-    return ImageDetectionResult(
-        width=width,
-        height=height,
-        regions=regions,
-    )
+    return ImageDetectionResult(width=width, height=height, regions=ordered)

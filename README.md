@@ -41,6 +41,9 @@ python -m venv .venv
 
 pip install -r requirements.txt
 
+# Required for the NER detector
+python -m spacy download en_core_web_sm
+
 # Put your Gemini API key in .env
 copy .env.example .env
 

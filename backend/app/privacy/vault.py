@@ -10,12 +10,12 @@ class VaultSession:
     sanitized_text: str
     aliases: list[Any]
     created_at: float
+    image_bytes: bytes | None = None
 
 
 # Temporary in-memory storage for the prototype.
 _SESSIONS: dict[str, VaultSession] = {}
 
-# Automatically remove old mappings.
 TTL_SECONDS = 15 * 60
 
 
@@ -23,6 +23,7 @@ def create_session(
     original_text: str,
     sanitized_text: str,
     aliases: list[Any],
+    image_bytes: bytes | None = None,
 ) -> str:
 
     session_id = str(uuid.uuid4())
@@ -32,6 +33,7 @@ def create_session(
         sanitized_text=sanitized_text,
         aliases=aliases,
         created_at=time.time(),
+        image_bytes=image_bytes,
     )
 
     return session_id
@@ -51,13 +53,12 @@ def delete_session(session_id: str):
 
 def cleanup():
 
-    current_time = time.time()
+    now = time.time()
 
-    expired_sessions = [
-        session_id
-        for session_id, session in _SESSIONS.items()
-        if current_time - session.created_at > TTL_SECONDS
+    expired = [
+        sid for sid, s in _SESSIONS.items()
+        if now - s.created_at > TTL_SECONDS
     ]
 
-    for session_id in expired_sessions:
-        _SESSIONS.pop(session_id, None)
+    for sid in expired:
+        _SESSIONS.pop(sid, None)

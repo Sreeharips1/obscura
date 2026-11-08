@@ -15,28 +15,28 @@ NAME_PATTERNS = [
     re.compile(
         r"(?i)\bmy\s+name\s+is\s+"
         r"([A-Z][A-Za-z'-]{2,}"
-        r"(?:\s+[A-Z][A-Za-z'-]{1,}){0,4})"
+        r"(?:\s+(?!(?:and|or|but|i|am|is|my|me|to|the|a|an|at|in|on|for|from|with|can|could|would|need|want|wants|wanted|wish|wishes|phone|email|mail|number|who|which|that|please|write|give|send|live|work|moved)\b)[A-Z][A-Za-z'-]*){0,4})"
     ),
 
     # My full name is Sreehari P Shaiju
     re.compile(
         r"(?i)\bmy\s+full\s+name\s+is\s+"
         r"([A-Z][A-Za-z'-]{2,}"
-        r"(?:\s+[A-Z][A-Za-z'-]{1,}){0,4})"
+        r"(?:\s+(?!(?:and|or|but|i|am|is|my|me|to|the|a|an|at|in|on|for|from|with|can|could|would|need|want|wants|wanted|wish|wishes|phone|email|mail|number|who|which|that|please|write|give|send|live|work|moved)\b)[A-Z][A-Za-z'-]*){0,4})"
     ),
 
     # I am Sreehari
     re.compile(
         r"(?i)\bI\s+am\s+"
         r"([A-Z][A-Za-z'-]{2,}"
-        r"(?:\s+[A-Z][A-Za-z'-]{1,}){0,3})"
+        r"(?:\s+(?!(?:and|or|but|i|am|is|my|me|to|the|a|an|at|in|on|for|from|with|can|could|would|need|want|wants|wanted|wish|wishes|phone|email|mail|number|who|which|that|please|write|give|send|live|work|moved)\b)[A-Z][A-Za-z'-]*){0,3})"
     ),
 
     # I'm Sreehari
     re.compile(
         r"(?i)\bI'm\s+"
         r"([A-Z][A-Za-z'-]{2,}"
-        r"(?:\s+[A-Z][A-Za-z'-]{1,}){0,3})"
+        r"(?:\s+(?!(?:and|or|but|i|am|is|my|me|to|the|a|an|at|in|on|for|from|with|can|could|would|need|want|wants|wanted|wish|wishes|phone|email|mail|number|who|which|that|please|write|give|send|live|work|moved)\b)[A-Z][A-Za-z'-]*){0,3})"
     ),
 
     # iam Sreehari
@@ -300,13 +300,13 @@ RECIPIENT_PATTERNS = [
         r"(?i)\bsend\s+(?:this|it|the\s+mail|the\s+email)"
         r"\s+to\s+"
         r"([A-Z][A-Za-z'-]{2,}"
-        r"(?:\s+[A-Z][A-Za-z'-]{1,}){0,3})"
+        r"(?:\s+(?!(?:and|or|but|i|am|is|my|me|to|the|a|an|at|in|on|for|from|with|can|could|would|need|want|wants|wanted|wish|wishes|phone|email|mail|number|who|which|that|please|write|give|send|live|work|moved)\b)[A-Z][A-Za-z'-]*){0,3})"
     ),
 
     re.compile(
         r"(?i)\bemail\s+"
         r"([A-Z][A-Za-z'-]{2,}"
-        r"(?:\s+[A-Z][A-Za-z'-]{1,}){0,3})"
+        r"(?:\s+(?!(?:and|or|but|i|am|is|my|me|to|the|a|an|at|in|on|for|from|with|can|could|would|need|want|wants|wanted|wish|wishes|phone|email|mail|number|who|which|that|please|write|give|send|live|work|moved)\b)[A-Z][A-Za-z'-]*){0,3})"
     ),
 ]
 

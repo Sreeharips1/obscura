@@ -3,3 +3,13 @@ uvicorn[standard]
 python-dotenv
 pydantic
 google-genai
+gliner
+spacy
+numpy
+opencv-contrib-python-headless>=4.10,<5
+python-multipart
+pytest
+httpx
+rapidocr-onnxruntime
+wordninja\npymupdf
+ultralytics

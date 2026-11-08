@@ -1,3 +1,4 @@
+import threading
 from functools import lru_cache
 
 from gliner import GLiNER
@@ -41,8 +42,22 @@ PII_LABELS = [
 # LOAD MODEL
 # ============================================================
 
-@lru_cache(maxsize=1)
+_lock = threading.Lock()
+_model = None
+
+
 def get_model():
+    global _model
+
+    # Only one request loads the model. Others wait for it.
+    with _lock:
+        if _model is None:
+            _model = _load_model()
+
+        return _model
+
+
+def _load_model():
 
     print(
         f"[OBSCURA] Loading GLiNER model: {MODEL_NAME}"

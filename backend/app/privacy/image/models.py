@@ -2,18 +2,11 @@ from pydantic import BaseModel
 from typing import Literal
 
 
-# ============================================================
-# IMAGE REGION
-# ============================================================
-
 class ImageRegion(BaseModel):
 
     id: str
-
     type: str
-
     label: str
-
     confidence: float
 
     x: int
@@ -23,22 +16,21 @@ class ImageRegion(BaseModel):
 
     source: str
 
+    # Text found in the region (OCR hits only). Shown locally in the UI.
+    text: str | None = None
+
+    # BLOCK regions are ALWAYS redacted, whatever the user selects.
     recommended_action: Literal[
-        "PSEUDONYMIZE",
+        "REDACT",
         "BLUR",
+        "PSEUDONYMIZE",
         "BLOCK",
         "ASK_USER",
     ] = "ASK_USER"
 
 
-# ============================================================
-# IMAGE DETECTION RESULT
-# ============================================================
-
 class ImageDetectionResult(BaseModel):
 
     width: int
-
     height: int
-
     regions: list[ImageRegion]

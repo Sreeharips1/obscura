@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.debug import debug
 from app.models import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -8,81 +9,44 @@ from app.models import (
     AliasPreview,
     ClearRequest,
 )
-
 from app.privacy.service import analyze, sanitize
-
-from app.privacy.vault import (
-    create_session,
-    delete_session,
-)
+from app.privacy.vault import create_session, delete_session
 
 
 router = APIRouter()
 
 
-@router.post(
-    "/analyze",
-    response_model=AnalyzeResponse
-)
+@router.post("/analyze", response_model=AnalyzeResponse)
 def analyze_text(request: AnalyzeRequest):
 
     detections = analyze(request.text)
 
     return AnalyzeResponse(
         text=request.text,
-        detections=detections
+        detections=detections,
     )
 
 
-@router.post(
-    "/prepare",
-    response_model=PrepareResponse
-)
+@router.post("/prepare", response_model=PrepareResponse)
 def prepare_text(request: PrepareRequest):
 
-    detections = analyze(
-        request.text
-    )
-
-    selected = [
-        detection
-        for detection in detections
-        if detection.id in request.selected_detection_ids
-    ]
-
-    # --------------------------------------------------------
-    # DEBUG / SAFETY CHECK
-    # --------------------------------------------------------
-
-    missing_ids = [
-        detection_id
-        for detection_id in request.selected_detection_ids
-        if detection_id not in {
-            detection.id
-            for detection in detections
-        }
-    ]
-
-    if missing_ids:
-
-        print(
-            "WARNING: Some selected detection IDs "
-            "were not found:",
-            missing_ids
-        )
+    detections = analyze(request.text)
 
     # --------------------------------------------------------
     # BLOCK SECRETS
+    #
+    # IMPORTANT: check ALL detections, not only the selected
+    # ones. The UI never lets the user select BLOCK items, so
+    # checking only the selection would let secrets through.
     # --------------------------------------------------------
 
     blocked = [
         detection
-        for detection in selected
+        for detection in detections
         if detection.recommended_action == "BLOCK"
     ]
 
     if blocked:
-
         return PrepareResponse(
             session_id="",
             original_text=request.text,
@@ -97,49 +61,37 @@ def prepare_text(request: PrepareRequest):
         )
 
     # --------------------------------------------------------
+    # Only keep selected IDs that really exist.
+    # --------------------------------------------------------
+
+    known_ids = {detection.id for detection in detections}
+
+    selected_ids = [
+        detection_id
+        for detection_id in request.selected_detection_ids
+        if detection_id in known_ids
+    ]
+
+    ignored = len(request.selected_detection_ids) - len(selected_ids)
+
+    if ignored:
+        debug(f"[OBSCURA] {ignored} selected detection IDs were not found.")
+
+    # --------------------------------------------------------
     # SANITIZE
     # --------------------------------------------------------
 
     sanitized_text, aliases = sanitize(
         request.text,
         detections,
-        request.selected_detection_ids,
+        selected_ids,
     )
 
-    # --------------------------------------------------------
-    # DEBUG
-    # --------------------------------------------------------
-
-    print("\n========== OBSCURA PREPARE ==========")
-
-    print("Original:")
-    print(request.text)
-
-    print("\nSelected IDs:")
-    print(request.selected_detection_ids)
-
-    print("\nDetected:")
-    for detection in detections:
-        print(
-            detection.id,
-            "|",
-            detection.type,
-            "|",
-            detection.value
-        )
-
-    print("\nAliases:")
-    for alias in aliases:
-        print(
-            alias.original,
-            "->",
-            alias.alias
-        )
-
-    print("\nSanitized:")
-    print(sanitized_text)
-
-    print("=====================================\n")
+    debug(
+        "[OBSCURA] prepare:",
+        f"{len(detections)} detections,",
+        f"{len(aliases)} aliases",
+    )
 
     # --------------------------------------------------------
     # CREATE PRIVACY VAULT SESSION
@@ -173,6 +125,4 @@ def clear_session(request: ClearRequest):
 
     delete_session(request.session_id)
 
-    return {
-        "cleared": True
-    }
+    return {"cleared": True}
