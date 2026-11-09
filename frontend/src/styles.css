@@ -1119,3 +1119,393 @@ select {
     width: 100%;
   }
 }
+
+
+/* ---------------- Access gate ---------------- */
+
+.gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.gateCard {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.gateCard h1 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+
+/* ============================================================
+   Risk icons and explanations
+   ============================================================ */
+
+.valueWithIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.typeIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.typeIcon.secret {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+.typeIcon.id,
+.typeIcon.finance {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.whyTip {
+  position: relative;
+  display: inline-flex;
+}
+
+.whyBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: help;
+}
+
+.whyBtn:hover,
+.whyBtn:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.whyPop {
+  display: none;
+  position: absolute;
+  left: -8px;
+  top: calc(100% + 6px);
+  z-index: 30;
+  width: min(300px, 72vw);
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.18);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink);
+  text-align: left;
+}
+
+.whyPop b {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13.5px;
+}
+
+.whyPop span,
+.whyPop em {
+  display: block;
+}
+
+.whyPop em {
+  margin-top: 6px;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.whyTip:hover .whyPop,
+.whyTip:focus-within .whyPop {
+  display: block;
+}
+
+.explain summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14.5px;
+  margin-bottom: 10px;
+}
+
+.explainList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.explainList li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.explainList b {
+  font-size: 14px;
+}
+
+.explainList p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   AI response
+   ============================================================ */
+
+.respWrap {
+  display: grid;
+  gap: 12px;
+}
+
+.respBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.seg button {
+  border: 0;
+  background: transparent;
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.seg button.on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+
+.respMeta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.respDoc {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.respSubject {
+  display: grid;
+  gap: 2px;
+  padding: 12px 20px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--line);
+}
+
+.respSubject span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.respSubject b {
+  font-size: 16px;
+}
+
+.respBody {
+  padding: 18px 20px;
+}
+
+.plainText {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+/* Rendered Markdown */
+
+.mdRoot {
+  font-size: 15.5px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.mdRoot > :first-child {
+  margin-top: 0;
+}
+
+.mdRoot > :last-child {
+  margin-bottom: 0;
+}
+
+.mdRoot p {
+  margin: 0 0 14px;
+}
+
+.mdH {
+  margin: 22px 0 8px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.mdH1 {
+  font-size: 21px;
+}
+
+.mdH2 {
+  font-size: 18.5px;
+}
+
+.mdH3 {
+  font-size: 16.5px;
+}
+
+.mdH4 {
+  font-size: 15.5px;
+}
+
+.mdRoot ul,
+.mdRoot ol {
+  margin: 0 0 14px;
+  padding-left: 24px;
+}
+
+.mdRoot li {
+  margin: 4px 0;
+}
+
+.mdRoot li > ul,
+.mdRoot li > ol {
+  margin: 4px 0 0;
+}
+
+.mdRoot a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+.mdRoot hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 20px 0;
+}
+
+.mdRoot blockquote {
+  margin: 0 0 14px;
+  padding: 4px 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface2);
+  border-radius: 0 10px 10px 0;
+  color: var(--muted);
+}
+
+.mdCode {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.codeBlock {
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+
+.codeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 6px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.codeBlock pre {
+  margin: 0;
+  padding: 14px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.mdTableWrap {
+  overflow-x: auto;
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.mdTable {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14.5px;
+}
+
+.mdTable th,
+.mdTable td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mdTable th {
+  background: var(--surface2);
+  font-weight: 700;
+}
+
+.mdTable tr:last-child td {
+  border-bottom: 0;
+}

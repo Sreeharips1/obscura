@@ -21,3 +21,5 @@ yolov8n.pt
 frontend/dist/
 .cache/
 backend.env
+
+build/

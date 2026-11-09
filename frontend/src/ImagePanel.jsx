@@ -12,6 +12,8 @@ import {
   Workspace,
   countBy,
 } from "./ui.jsx";
+import { TypeIcon, WhyTip } from "./riskInfo.jsx";
+import ResponseView from "./ResponseView.jsx";
 
 export default function ImagePanel({ provider }) {
   const [file, setFile] = useState(null);
@@ -289,7 +291,11 @@ export default function ImagePanel({ provider }) {
 
                           <div className="findingBody">
                             <div className="findingTop">
-                              <span>{region.label}</span>
+                              <span className="valueWithIcon">
+                                <TypeIcon type={region.type} />
+                                <span>{region.label}</span>
+                                <WhyTip type={region.type} />
+                              </span>
                               {region.text && (
                                 <span className="mono">{region.text}</span>
                               )}
@@ -378,6 +384,7 @@ export default function ImagePanel({ provider }) {
           >
             <Report
               total={regions.length}
+              kinds={regions.map((r) => r.type)}
               types={countBy(regions, (r) => r.label)}
             >
               {forcedCount > 0 && (
@@ -426,7 +433,7 @@ export default function ImagePanel({ provider }) {
               </>
             }
           >
-            <div className="responseText">{response}</div>
+            <ResponseView text={response} />
           </Output>
         </>
       }

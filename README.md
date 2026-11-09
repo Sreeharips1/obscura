@@ -10,6 +10,53 @@ answer afterwards.
 Works for **text**, **images** and **PDFs**. Currently talks to **Gemini**; the
 interface is ready for more providers.
 
+## Quick start (for anyone who downloads the code)
+
+**You need:**
+
+- [Git](https://git-scm.com), [Python](https://www.python.org/downloads/) 3.10 to 3.13 and [Node.js](https://nodejs.org) 22 LTS (20.19 or newer)
+- Your own free Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- About 5 GB of free disk space and an internet connection for the first setup
+
+**Windows (PowerShell):**
+
+```powershell
+git clone https://github.com/Sreeharips1/obscura.git
+cd obscura
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+When it finishes, open `backend\.env` in Notepad and paste your key after `GEMINI_API_KEY=`. Then:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+The app opens at http://localhost:5173. The first start and the first privacy check are slow because the models load. Later runs are faster.
+
+**Mac or Linux:**
+
+```bash
+git clone https://github.com/Sreeharips1/obscura.git
+cd obscura
+bash setup.sh
+# edit backend/.env and add your Gemini key
+bash start.sh
+```
+
+**Something not working?**
+
+| What you see | What to do |
+| --- | --- |
+| "running scripts is disabled" | Use the full `powershell -ExecutionPolicy Bypass -File ...` command shown above |
+| "Connect to a server" page | The backend is still loading. Wait a minute and click **Try again** |
+| Sending to the AI fails | Check `GEMINI_API_KEY` in `backend/.env`. If you get a model not found error, set `GEMINI_MODEL` to a model name your key can use |
+| `npm` complains about the Node version | Install Node.js 22 LTS |
+| Face or barcode detection errors | Run the setup script again (it repairs the OpenCV install) |
+| Setup stops with a red message | Read the message, fix that one thing, and run setup again. It is safe to repeat |
+
+Your key stays in `backend/.env` on your own computer. That file is never uploaded to GitHub.
+
 ## How it works
 
 ```mermaid

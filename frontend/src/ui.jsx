@@ -1,6 +1,95 @@
 import { useRef, useState } from "react";
+import { RiskExplainer } from "./riskInfo.jsx";
 
-export const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
+function resolveApi() {
+  try {
+    const saved = localStorage.getItem("obscura-api");
+    if (saved) return saved;
+  } catch {
+    /* ignore */
+  }
+
+  return import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
+}
+
+export const API = resolveApi();
+
+export function hasCustomServer() {
+  try {
+    return Boolean(localStorage.getItem("obscura-api"));
+  } catch {
+    return false;
+  }
+}
+
+// Saves the address, then reloads so the whole app uses it.
+export function setServerAddress(value) {
+  let address = String(value || "").trim().replace(/\/+$/, "");
+
+  if (!/^https?:\/\//i.test(address)) return false;
+  if (!address.endsWith("/api")) address += "/api";
+
+  try {
+    localStorage.setItem("obscura-api", address);
+  } catch {
+    return false;
+  }
+
+  window.location.reload();
+  return true;
+}
+
+export function resetServerAddress() {
+  try {
+    localStorage.removeItem("obscura-api");
+  } catch {
+    /* ignore */
+  }
+
+  window.location.reload();
+}
+
+// ---- Access code (used when the backend sets OBSCURA_ACCESS_KEY) ----
+const KEY_STORE = "obscura-key";
+
+export function getAccessKey() {
+  try {
+    return sessionStorage.getItem(KEY_STORE) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function setAccessKey(value) {
+  try {
+    if (value) sessionStorage.setItem(KEY_STORE, value);
+    else sessionStorage.removeItem(KEY_STORE);
+  } catch {
+    /* ignore */
+  }
+}
+
+// Adds the access code to every call to our own API.
+if (typeof window !== "undefined" && !window.__obscuraFetch) {
+  window.__obscuraFetch = true;
+  const nativeFetch = window.fetch.bind(window);
+
+  window.fetch = (input, init = {}) => {
+    const url = typeof input === "string" ? input : input?.url || "";
+
+    if (url.startsWith(API)) {
+      const key = getAccessKey();
+
+      if (key) {
+        const headers = new Headers(init.headers || {});
+        headers.set("X-Obscura-Key", key);
+        init = { ...init, headers };
+      }
+    }
+
+    return nativeFetch(input, init);
+  };
+}
 
 // Only Gemini is wired up in the backend today.
 export const PROVIDERS = [
@@ -264,7 +353,7 @@ export function Output({ title, step, ready, empty, actions, children }) {
   );
 }
 
-export function Report({ total, risks = [], types = [], children }) {
+export function Report({ total, risks = [], types = [], kinds = [], children }) {
   return (
     <div className="report">
       {total === 0 ? (
@@ -302,6 +391,8 @@ export function Report({ total, risks = [], types = [], children }) {
           )}
         </>
       )}
+
+      {total > 0 && <RiskExplainer kinds={kinds} />}
 
       {children}
     </div>

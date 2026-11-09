@@ -15,6 +15,8 @@ import {
   countBy,
   humanize,
 } from "./ui.jsx";
+import { TypeIcon, WhyTip } from "./riskInfo.jsx";
+import ResponseView from "./ResponseView.jsx";
 
 function HighlightedText({ text, detections, selected, onToggle }) {
   // Only highlight detections whose position matches the text exactly.
@@ -416,7 +418,11 @@ export default function TextPanel({ provider }) {
 
                             <div className="findingBody">
                               <div className="findingTop">
+                                <span className="valueWithIcon">
+                                <TypeIcon type={d.type} />
                                 <span className="mono">{d.value}</span>
+                                <WhyTip type={d.type} risk={d.risk} />
+                              </span>
                                 <RiskBadge risk={d.risk} />
                               </div>
 
@@ -501,6 +507,7 @@ export default function TextPanel({ provider }) {
           >
             <Report
               total={detections.length}
+              kinds={detections.map((d) => d.type)}
               risks={riskCounts}
               types={typeCounts}
             >
@@ -562,7 +569,7 @@ export default function TextPanel({ provider }) {
               </>
             }
           >
-            <div className="responseText">{aiResponse}</div>
+            <ResponseView text={aiResponse} />
             <p className="hint">
               Private values were restored by the backend, not by {provider}.
             </p>
